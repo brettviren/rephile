@@ -1,0 +1,4 @@
+click
+sqlalchemy
+python-magic
+git_annex_adapter

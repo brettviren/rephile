@@ -1,1 +1,8 @@
 *~
+.envrc
+*.egg-info
+cut.*
+.direnv
+*.db
+__pycache__
+cut
