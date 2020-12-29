@@ -23,14 +23,17 @@ class Rephile:
         self._session = rdb.session(self.cache)
         return self._session
 
-
     def exif(self, files):
         'Return EXIF info from files as dict'
         return pmapgroup(rephile.files.exif, files, self.nproc)
         
     def hashsize(self, files):
         'Return (hash,size) tuples for files'
-        return pmapgroup(rephile.files.hashsize, files, self.nproc)
+        hss = pmapgroup(rephile.files.hashsize, files, self.nproc)
+        ret = list()
+        for one in hss:
+            ret.append((one['sha256'], one['size']))
+        return ret
 
     def digest(self, paths, force):        
         'Return Digest object matching paths'

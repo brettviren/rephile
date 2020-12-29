@@ -1,0 +1,14 @@
+{% for path, dig in bypath.items() %}
+{{ dig.sha256 }}: {{path}}
+  {% for attr in dig.attrs %}
+  {{ attr.name }} = {{ attr.value() }}
+  {% endfor %}
+{% endfor %}
+
+{% for dat in byhash.values() %}
+{{ dat.sha256 }}
+  {{ dat.mime }} {{ dat.ImageSize }} {{ dat.size }}
+  {% for path in dat.paths %}
+    {{ path }}
+  {% endfor %}
+{% endfor %}

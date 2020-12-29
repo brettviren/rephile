@@ -11,6 +11,7 @@ setuptools.setup(
     python_requires='>=3.5',
     install_requires = [
         "click",
+        "jinja2",
         "sqlalchemy",
         "python-magic",
         "git_annex_adapter",

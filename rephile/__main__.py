@@ -46,15 +46,75 @@ def hashsize(ctx, files):
         click.echo(f"{s:10} {h} {p}")
 
 @cli.command("digest")
-@click.option("-f", "--force", is_flag=True,
+@click.option("-F", "--force", is_flag=True,
               help="Force an update to the cache")
 @click.argument("files", nargs=-1)
 @click.pass_context
 def digest(ctx, force, files):
+    'Import information about files'
     digs = ctx.obj.digest(files, force)
     for dig in digs:
         click.echo(dig)
     
+
+@cli.command("lines")
+@click.option("-F", "--force", is_flag=True,
+              help="Force an update to the cache")
+@click.option("-f", "--format", default="{SourceFile}",
+              help="F-string to apply to file metadata")
+@click.option("-d", "--delimiter", default="\n",
+              help="Delimiter of lines of text")
+@click.argument("files", nargs=-1)
+@click.pass_context
+def lines(ctx, force, format, delimiter, files):
+    'Format information about each file into one line of text.'
+    from rephile.digest import astext
+    digs = ctx.obj.digest(files, force)
+    lines = list()
+    for dig in digs:
+        lines.append(astext(dig, format))
+    text = delimiter.join(lines)
+    #click.echo(text)
+    print (text.encode("latin1").decode('unicode-escape'))
+
+
+@cli.command("render")
+@click.option("-F", "--force", is_flag=True,
+              help="Force an update to the cache")
+@click.option("-t", "--template", type=click.Path(),
+              help="A template file to render")
+@click.argument("files", nargs=-1)
+@click.pass_context
+def render(ctx, force, template, files):
+    'Render template against model'
+    from rephile.templates import render as doit
+    from rephile.digest import asdict
+    digs = ctx.obj.digest(files, force)
+    byhash = dict()
+    bypath = dict()
+    for f,d in zip(files,digs):
+        bh = asdict(d)
+        bh['path'] = f
+        byhash[d.sha256] = bh
+        bypath[f] = d
+
+    # Model provides top level keys used by template
+    model = dict(byhash=byhash, bypath=bypath)
+    text = doit(template, model)
+    print (text)
+    
+
+@cli.command("make")
+@click.option("-n", "--dry-run", is_flag=True,
+              help="Do or do not, there is no try.  Except using this flag")
+@click.option("-m", "--method", default="copy",
+              type=click.Choice(["copy","move","hard","link"]),
+              help="Method for making a file from input files")
+@click.argument("files", nargs=-1)
+@click.pass_context
+def make(ctx, files):
+    'Make a file in some way'
+
 
 def main():
     cli(obj=None)

@@ -29,21 +29,22 @@ def exif(files):
     return json.loads(text)
 
 
-# canonical hasher
-Hasher = hashlib.sha256
 
 def hashsize_one(fname):
     'Return tuple of hash and size'
-    hasher = Hasher()
+    h1 = hashlib.sha256()
+    h2 = hashlib.md5()
+
     fp = open(fname, 'rb')
     data = fp.read()
     size = 0
     while len(data) > 0:
         size += len(data)
-        hasher.update(data)
+        h1.update(data)
+        h2.update(data)
         data = fp.read()
     fp.close()
-    return (hasher.hexdigest(), size)
+    return dict(sha256=h1.hexdigest(), md5=h2.hexdigest(), size=size)
     
 def hashsize(files):
     'Map hashsize_one onto list of files'
@@ -56,9 +57,12 @@ def info(files):
         files = [files]
     ret = list()
     for path in files:
-        ext = os.path.splitext(path)[1][1:]
         rpath = os.path.realpath(path)
-        magi = magic.from_file(rpath)
-        mime = magic.from_file(rpath, mime=True)
-        ret.append((ext, magi, mime))
+        dat = dict(
+            ext=os.path.splitext(path)[1][1:],
+            realpath=rpath,
+            abspath=os.path.abspath(path),
+            magic=magic.from_file(rpath),
+            mime=magic.from_file(rpath, mime=True))
+        ret.append(dat)
     return ret

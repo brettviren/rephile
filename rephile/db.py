@@ -24,7 +24,7 @@ def session(dbfile):
     Return a DB session
     '''
     if not dbfile:
-        raise ValueError("no rephile cache url")
+        raise ValueError("no rephile cache, set REPHILE_CACHE?")
     if not os.path.exists(dbfile):
         init(dbfile)
     if os.stat(dbfile).st_size == 0:

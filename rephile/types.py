@@ -16,11 +16,6 @@ class HashType(enum.Enum):
     sha256 = 2
     annex = 3
 
-class AttrType(enum.Enum):
-    string = 0
-    integer = 1
-    rational = 2
-    
 class Digest(Base):
     '''
     A hash based digest of some data
@@ -28,7 +23,11 @@ class Digest(Base):
     __tablename__ = "digest"
     id = Column(Integer, primary_key=True)
 
-    text = Column(String)
+    # git-annex
+    sha256 = Column(String, unique=True)
+    # thumbnails
+    md5 = Column(String, unique=True)
+
     size = Column(Integer)
 
     ext = Column(String)
@@ -43,6 +42,15 @@ class Digest(Base):
             (self.size, self.text, self.ext, self.mime)
 
 
+class AttrType(enum.Enum):
+    string = 0
+    integer = 1
+    rational = 2
+
+    def cast(self, value):
+        meth = [str,int,float][self.value]
+        return meth(value)
+    
 class Attribute(Base):
     '''
     Metadata associated to some data through a digest.
@@ -52,14 +60,18 @@ class Attribute(Base):
     name = Column(String)
     text = Column(String)
     atype = Column(Enum(AttrType))
-    digest_id = Column(Integer, ForeignKey('digest.id'))
+    digest_id = Column(Integer, ForeignKey('digest.id'),
+                       nullable=False)
+
+    def value(self):
+        return self.atype.cast(self.text)
 
 class Collection(Base):
     '''
     A collection of paths.
     '''
     __tablename__ = "collection"
-    id = Column(Integer, primary_key=True)    
+    id = Column(Integer, primary_key=True)
     name = Column(String)
     host = Column(String)
     base = Column(String)
