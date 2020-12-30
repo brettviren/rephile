@@ -2,6 +2,8 @@
 '''
 Main CLI to rephile
 '''
+import os
+import shutil
 import json
 import click
 
@@ -102,13 +104,12 @@ def render(ctx, force, template, files):
     # fixme: factor this into rephile.main and further.
 
     from rephile.templates import render as doit
-    from rephile.digest import asdict
     digs_inorder = ctx.obj.digest(files, force)
     digs = dict()
     paths = dict()
     for path, dig in zip(files, digs_inorder):
-        digs[dig.sha256] = dig
-        paths[path] = dig.sha256
+        digs[dig.id] = dig
+        paths[path] = dig.id
 
     # Model provides top level keys used by template
     model = dict(digs=digs, paths=paths)
@@ -119,14 +120,73 @@ def render(ctx, force, template, files):
 @cli.command("make")
 @click.option("-n", "--dry-run", is_flag=True,
               help="Do or do not, there is no try.  Except using this flag")
+@click.option("-F", "--force", is_flag=True,
+              help="Force an update to the cache")
+@click.option("-f", "--format", default="{SourceFile}",
+              help="F-string to apply to file metadata")
 @click.option("-m", "--method", default="copy",
-              type=click.Choice(["copy","move","hard","link"]),
+              type=click.Choice(["copy","move","hard","soft",]),
               help="Method for making a file from input files")
 @click.argument("files", nargs=-1)
 @click.pass_context
-def make(ctx, files):
-    'Make a file in some way'
+def make(ctx, dry_run, force, format, method, files):
+    'Make new files from old'
+    from rephile.digest import astext
 
+    digs = ctx.obj.digest(files, force)
+
+    new_paths = list()
+    for dig in digs:
+        new_paths.append(astext(dig, format))
+
+    for src, tgt, dig in zip(files, new_paths, digs):
+        if os.path.abspath(src) == os.path.abspath(tgt):
+            print(f"same: {src} <--> {tgt}")
+            return
+
+        print(f"{method}: {src} ---> {tgt}")
+        if dry_run:
+            continue
+
+        tgt_dir = os.path.dirname(tgt)
+        if not os.path.exists(tgt_dir):
+            os.makedirs(tgt_dir)
+
+        if os.path.exists(tgt):
+            os.remove(src)
+
+        if method == "copy":
+            shutil.copy(src, tgt, follow_symlinks=False)
+            continue
+
+        if method == "move":
+            shutil.move(src, tgt)
+            continue
+
+        if method == "soft":
+            if os.path.islink(src):
+                os.symlink(os.path.realpath(src), tgt)
+            else:
+                os.symlink(src, tgt)
+            continue
+    
+        if method == "hard":
+            os.link(src, tgt)
+            continue
+
+
+
+
+@cli.command("asdata")
+@click.argument("files", nargs=-1)
+@click.pass_context
+def asdata(ctx, files):
+    'File info as avilable to format'
+    from rephile.paths import asdict
+    paths = ctx.obj.paths(files)
+    text = json.dumps([asdict(p) for p in paths], indent=4)
+    print(text)
+    
 
 def main():
     cli(obj=None)

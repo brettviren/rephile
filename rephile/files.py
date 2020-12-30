@@ -27,14 +27,40 @@ def exif(files):
     cmd = ["exiftool", "-j"] + files
     out = run(cmd, capture_output=True)
     text = out.stdout.decode()
-    return json.loads(text)
+    dats = json.loads(text)
+    for dat in dats:
+        for omit in [
+                "SourceFile",
+                "ExifToolVersion",
+                "FileName",
+                "Directory",
+                "FileSize",
+                "FileModifyDate",
+                "FileAccessDate",
+                "FileInodeChangeDate",
+                "FilePermissions",
+                "FileTypeExtension"]:
+            dat.pop(omit)
+    return dats
 
 
+
+
+def hash_one(fname):
+    h1 = hashlib.sha256()
+    fp = open(fname, 'rb')
+    data = fp.read()
+    size = 0
+    while len(data) > 0:
+        size += len(data)
+        h1.update(data)
+        data = fp.read()
+    fp.close()
+    return h1.hexdigest()
 
 def hashsize_one(fname):
     'Return tuple of hash and size'
     h1 = hashlib.sha256()
-    h2 = hashlib.md5()
 
     fp = open(fname, 'rb')
     data = fp.read()
@@ -42,10 +68,9 @@ def hashsize_one(fname):
     while len(data) > 0:
         size += len(data)
         h1.update(data)
-        h2.update(data)
         data = fp.read()
     fp.close()
-    return dict(sha256=h1.hexdigest(), md5=h2.hexdigest(), size=size)
+    return (h1.hexdigest(), size)
     
 def hashsize(files):
     'Map hashsize_one onto list of files'

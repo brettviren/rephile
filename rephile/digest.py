@@ -2,21 +2,26 @@
 '''
 Medium level operations on Digest.
 '''
+import os
 from rephile.types import *
 from rephile.jobs import pmapgroup
 import rephile.files as rfiles
 
 
-def make_one(path):
-    'Return Digest of file at path'
-    hhs = rfiles.hashsize_one(path)
-    return Digest(
-        sha256 = hhs['sha256'],
-        md5 = hhs['md5'],
-        size = hss['size'],
-        mime = rfiles.mime(path),
-        magic = rfiles.magic(path))
+def make_one(path, sha=None):
+    'Return Digest given a current path'
+    if sha is None:
+        sha, size = rfiles.hashsize_one(path)
+    else:
+        size = os.stat(path).st_size
+    dig = Digest(
+        id = sha,
+        size = size,
+        mime = rfiles.mime_one(path),
+        magic = rfiles.magic_one(path))
         
+    return dig
+
 
 def make_some(dats):
     'Form one Digest from packing. Use instead digest.make(paths)'
@@ -63,6 +68,45 @@ import rephile.paths as rpaths
 import rephile.attrs as rattrs
 import rephile.thumbs as rthumbs
 
+def fresh(session, paths, nproc=1):
+    '''
+    Return array of Digests corresponding to paths
+    '''
+    path_hss = pmapgroup(rfiles.hashsize, paths, nproc)
+    ptoh = dict()
+    htop = dict()
+    htos = dict()
+    for path, hs in zip(paths, path_hss):
+        sha = hs[0]
+        ptoh[path] = sha
+        htop[sha] = path
+        htos[sha] = hs[1]
+
+    have_digs = session.query(Digest).filter(Digest.id.in_(htop)).all()
+    htod = {d.id:d for d in have_digs}
+    fresh_objs = list()
+    for sha, path in htop.items():
+        if sha in htod:
+            continue
+
+        # New Digest
+        dig = make_one(path, sha)
+        htod[sha] = dig
+        fresh_objs.append(dig)
+
+        # Attribute and Thumb are based on content
+        attrs = rattrs.make_some([(path, sha)])
+        fresh_objs += attrs
+        thumbs = rthumbs.make_some([(path, sha)])
+        fresh_objs += thumbs
+
+    if fresh_objs:
+        session.add_all(fresh_objs)
+        session.flush()             # to resolve fresh ids
+
+    order = [htod[ptoh[p]] for p in paths]
+    return order
+
 def build(session, paths, nproc=1, force=False):
     '''
     Return Digests associated with paths.  
@@ -71,65 +115,13 @@ def build(session, paths, nproc=1, force=False):
 
     If force is True, force a cache update for existing digests.
     '''
-
-    # probably there is a more SQL'y way to do the following!
-
-    # the paths may:
-    # - be already added
-    # - not added but point to existing digs
-    # - not added but require new digs
-
-    ptod = dict()                # digs by path
-    htod = dict()                # digs by hash
-    htop = dict()                # to path from hash
-
-    have_paths = session.query(Path).filter(Path.path.in_(paths))
-    for hpath in have_paths.all():
-        dig = hpath.digest
-        htod[dig.sha256] = dig
-        for p in dig.paths:
-            ptod[p.path] = dig
-
-    fresh_paths = [p for p in paths if p not in ptod]
-    if not fresh_paths:         # done
-        return [ptod[p] for p in paths]
-
-    fresh_digs = list()
-    for path, one in zip(paths, pmapgroup(rfiles.hashsize, fresh_paths, nproc)):
-        htext = one['sha256']
-        have = htod.get(htext, None)
-        if have:
-            ptod[path] = have
-            continue
-        d = Digest(
-            sha256 = htext,
-            md5 = one['md5'],
-            size = one['size'],
-            mime = rfiles.mime_one(path),
-            magic = rfiles.magic_one(path))
-        ptod[path] = d
-        htod[htext] = d
-        htop[htext] = path
-        fresh_digs.append(d)
-
-    if fresh_digs:
-        session.add_all(fresh_digs)
-        session.flush()             # to resolve fresh ids
-
-    print ("FRESH PATHS:",fresh_paths)
-    pis = [(p,ptod[p].id) for p in fresh_paths]
-    path_objs = rpaths.make(pis, nproc)
-    session.bulk_save_objects(path_objs)
-
-    pis = [(htop[d.sha256], d.id) for d in fresh_digs]
-    attr_objs = rattrs.make(pis, nproc)
-    session.bulk_save_objects(attr_objs)
-    thumb_objs = rthumbs.make(pis, nproc)
-    session.bulk_save_objects(thumb_objs)
-
+    paths = [os.path.abspath(p) for p in paths]
+    digs = fresh(session, paths, nproc)
+    shas = [d.id for d in digs]
+    got = rpaths.fresh(session, zip(paths, shas))
     session.commit()
 
-    return [ptod[p] for p in paths]
+    return digs
 
 
 def asdict(dig):
@@ -137,15 +129,19 @@ def asdict(dig):
     Return Digest info as a dictionary .
     '''
     ret = dict()
-    for attr in dig.attrs:
-        ret[attr.name] = attr.value()
-    ret["sha256"] = dig.sha256
-    ret["md5"] = dig.md5
-    ret["size"] = dig.size
-    ret["mime"] = dig.mime
-    ret["magic"] = dig.magic
-    ret["paths"] = [p.path for p in dig.paths]
+    for column in dig.__table__.columns:
+        ret[column.name] = str(getattr(dig, column.name))
     return ret
+    # ret = dict()
+    # for attr in dig.attrs:
+    #     ret[attr.name] = attr.value
+    # ret["hash"] = dig.id
+    # ret["size"] = dig.size
+    # ret["mime"] = dig.mime
+    # ret["magic"] = dig.magic
+    # ret["paths"] = [p.id for p in dig.paths]
+    # ret["bases"] = [os.path.basename(p) for p in ret["paths"]]
+    # return ret
 
 def astext(dig, pat):
     '''

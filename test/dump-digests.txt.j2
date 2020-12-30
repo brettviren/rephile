@@ -8,8 +8,11 @@
 
 {% for hash, dig in digs.items() %}
 {{ hash }}
-  {{ dig.mime }} {{ dig.attrmap["ImageSize"] }} {{ dig.size }}
+  {{ dig.mime }} {{ dig.attrmap.ImageSize }} {{ dig.size }}
   {% for path in dig.paths %}
-    {{ path.path }}
+    {{ path.id }}
+  {% endfor %}
+  {% for thumb in dig.thumbs %}
+    thumb# {{thumb.id}}: {{thumb.width}} x {{thumb.height}}
   {% endfor %}
 {% endfor %}

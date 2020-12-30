@@ -5,6 +5,7 @@ Methods of these classes do high level operations.  They deal in
 "object level" data and with no concern to UI.
 
 '''
+import os
 from rephile import db as rdb
 import rephile.files
 from rephile.jobs import pmapgroup
@@ -34,12 +35,15 @@ class Rephile:
     def hashsize(self, files):
         'Return (hash,size) tuples for files'
         hss = pmapgroup(rephile.files.hashsize, files, self.nproc)
-        ret = list()
-        for one in hss:
-            ret.append((one['sha256'], one['size']))
-        return ret
+        return hss
 
-    def digest(self, paths, force):        
+    def digest(self, paths, force=False):        
         'Return Digest object matching paths'
         return rephile.digest.build(self.session, paths, self.nproc, force)
+        
+    def paths(self, files, force=False):
+        files = [os.path.abspath(f) for f in files]
+        digs = self.digest(files, force)
+        shas = [d.id for d in digs]
+        return rephile.paths.fresh(self.session, zip(files, shas))
         

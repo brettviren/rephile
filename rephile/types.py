@@ -2,31 +2,25 @@
 '''
 rephile cache types
 '''
+import enum
+
 from collections import defaultdict
-from sqlalchemy import Column, Integer, String, Enum, ForeignKey, LargeBinary
+from sqlalchemy import Column, Integer, String, Enum, ForeignKey, \
+    LargeBinary, DateTime
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 
 Base = declarative_base()
 
-import enum
-class HashType(enum.Enum):
-    md5 = 0
-    sha1 = 1
-    sha256 = 2
-    annex = 3
 
 class Digest(Base):
     '''
     A hash based digest of some data
     '''
     __tablename__ = "digest"
-    id = Column(Integer, primary_key=True)
 
-    # git-annex
-    sha256 = Column(String, unique=True)
-    # thumbnails
-    md5 = Column(String, unique=True)
+    # sha256
+    id = Column(String, primary_key=True)
 
     size = Column(Integer)
 
@@ -39,7 +33,7 @@ class Digest(Base):
     
     def __repr__(self):
         return "<Digest: %s [%s] %s>" % \
-            (self.sha256[:8], self.mime, self.size)
+            (self.id[:8], self.mime, self.size)
 
     @property
     def attrmap(self):
@@ -104,8 +98,16 @@ class Annex(Base):
 
 class Path(Base):
     __tablename__ = "path"
-    id = Column(Integer, primary_key=True)
-    path = Column(String, unique=True)
+    # absolute path, but not realpath
+    id = Column(String, primary_key=True)
+    real = Column(String, unique=True)
+    ext = Column(String)
+    mode = Column(Integer, default=0)
+    uid = Column(Integer, default=-1)
+    gid = Column(Integer, default=-1)
+    atime = Column(DateTime, default=0)
+    mtime = Column(DateTime, default=0)
+    ctime = Column(DateTime, default=0)
     digest_id = Column(Integer, ForeignKey("digest.id"))
     collection_id = Column(Integer, ForeignKey("collection.id"))
 

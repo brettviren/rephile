@@ -17,7 +17,8 @@ setup_file () {
 @test "direct exif" {
     run rephile exif images/viren.jpg
     echo "$output"
-    [[ "$(echo -e "$output"|grep SourceFile|grep -c viren.jpg)" = "1" ]]
+    [[ "$(echo -e "$output"|grep -c viren)" = "0" ]]
+    [[ "$(echo -e "$output"|grep ImageSize|grep -c 460x460)" = "1" ]]
 }
 
 @test "init cache" {
@@ -71,7 +72,8 @@ setup_file () {
     run sqlite3 $REPHILE_CACHE 'select count(*) from path'
     [[ "$output" = "3" ]]
     run sqlite3 $REPHILE_CACHE 'select count(*) from attribute'
-    [[ "$output" = "44" ]]
+    echo "$output"
+    [[ "$output" = "24" ]]
     run sqlite3 $REPHILE_CACHE 'select count(*) from thumb'
     [[ "$output" = "5" ]]
 }

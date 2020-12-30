@@ -18,7 +18,6 @@ def init(url):
     '''
     Initialize a rephile cache.
     '''
-    print(f'rephile initialize {url}')
     Base.metadata.create_all(engine(url))
 
 def session(dbfile):

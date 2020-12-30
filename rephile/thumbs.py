@@ -25,5 +25,4 @@ def make_some(pis):
 
 
 def make(pis, nproc=1):
-    print(pis)
     return pmapgroup(make_some, pis, nproc)
