@@ -1,0 +1,9 @@
+<html>
+  <body>
+    {% for hash, dig in byhash.items() %}
+    <pre>{{ hash }}</pre>
+    <img src="data:image/png;base64,{{ dig.thumb.data }}" /></p>
+    
+    {% endfor %}
+  </body>
+</html>

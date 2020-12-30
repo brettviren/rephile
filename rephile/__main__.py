@@ -4,6 +4,8 @@ Main CLI to rephile
 '''
 import json
 import click
+import base64
+import vignette
 
 from rephile import Rephile
 from rephile.jobs import pmapgroup
@@ -87,6 +89,7 @@ def lines(ctx, force, format, delimiter, files):
 @click.pass_context
 def render(ctx, force, template, files):
     'Render template against model'
+    # fixme: normalize the data better!
     from rephile.templates import render as doit
     from rephile.digest import asdict
     digs = ctx.obj.digest(files, force)
@@ -95,6 +98,9 @@ def render(ctx, force, template, files):
     for f,d in zip(files,digs):
         bh = asdict(d)
         bh['path'] = f
+        thumbpath = vignette.get_thumbnail(f)
+        thumbdata = base64.b64encode(open(thumbpath,'rb').read()).decode()
+        bh['thumb'] = dict(path=thumbpath, data=thumbdata)
         byhash[d.sha256] = bh
         bypath[f] = d
 
