@@ -23,6 +23,10 @@ class Rephile:
         self._session = rdb.session(self.cache)
         return self._session
 
+    def init(self):
+        'Explicitly initialize the database'
+        rdb.init(self.cache)
+
     def exif(self, files):
         'Return EXIF info from files as dict'
         return pmapgroup(rephile.files.exif, files, self.nproc)
@@ -37,5 +41,5 @@ class Rephile:
 
     def digest(self, paths, force):        
         'Return Digest object matching paths'
-        return rephile.digest.bypath(self.session, paths, self.nproc, force)
+        return rephile.digest.build(self.session, paths, self.nproc, force)
         

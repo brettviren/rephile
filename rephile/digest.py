@@ -7,6 +7,17 @@ from rephile.jobs import pmapgroup
 import rephile.files as rfiles
 
 
+def make_one(path):
+    'Return Digest of file at path'
+    hhs = rfiles.hashsize_one(path)
+    return Digest(
+        sha256 = hhs['sha256'],
+        md5 = hhs['md5'],
+        size = hss['size'],
+        mime = rfiles.mime(path),
+        magic = rfiles.magic(path))
+        
+
 def make_some(dats):
     'Form one Digest from packing. Use instead digest.make(paths)'
     # assure we don't double add
@@ -19,7 +30,6 @@ def make_some(dats):
             sha256 = dat['sha256'],
             md5 = dat['md5'],
             size = dat['size'],
-            ext = dat['ext'],
             mime = dat['mime'],
             magic = dat['magic'])
             
@@ -40,7 +50,9 @@ def make(paths, nproc=1):
     dat2 = pmapgroup(rfiles.info, paths, nproc)
     dat = list();
     for d1,d2 in zip(dat1, dat2):
-        dat.append(dict(d1, **d2))
+        d = dict(d1, **d2)
+        dat.append(d)
+        
     # Do not parallelize on make_some() as the same hash may be
     # created in different groups, leading to violation of UNIQUE
     # constraint.  
@@ -49,46 +61,76 @@ def make(paths, nproc=1):
 
 import rephile.paths as rpaths
 import rephile.attrs as rattrs
+import rephile.thumbs as rthumbs
 
-def bypath(session, paths, nproc=1, force=False):
+def build(session, paths, nproc=1, force=False):
     '''
     Return Digests associated with paths.  
 
     Will ingest any that are not known.
 
-    If force is True, force a cache update.
+    If force is True, force a cache update for existing digests.
     '''
-    byp = dict()
 
-    if not force:
-        have = session.query(Path).filter(Path.path.in_(paths))
-        for path in have.all():
-            byp[path.path] = path.digest
+    # probably there is a more SQL'y way to do the following!
 
-    new_paths = [p for p in paths if p not in byp]
-    if not new_paths:
-        return [byp.get(p) for p in paths]
+    # the paths may:
+    # - be already added
+    # - not added but point to existing digs
+    # - not added but require new digs
 
-    new_digs = make(new_paths, nproc)
-    if not new_digs:
-        raise ValueError("failed to make new Digests")
-    session.add_all(new_digs)
-    session.flush()             # to resolve ids
+    ptod = dict()                # digs by path
+    htod = dict()                # digs by hash
+    htop = dict()                # to path from hash
 
-    new_dids = [d.id for d in new_digs]
-    pis = zip(new_paths, new_dids)
+    have_paths = session.query(Path).filter(Path.path.in_(paths))
+    for hpath in have_paths.all():
+        dig = hpath.digest
+        htod[dig.sha256] = dig
+        for p in dig.paths:
+            ptod[p.path] = dig
 
-    pis = list(pis)
+    fresh_paths = [p for p in paths if p not in ptod]
+    if not fresh_paths:         # done
+        return [ptod[p] for p in paths]
 
+    fresh_digs = list()
+    for path, one in zip(paths, pmapgroup(rfiles.hashsize, fresh_paths, nproc)):
+        htext = one['sha256']
+        have = htod.get(htext, None)
+        if have:
+            ptod[path] = have
+            continue
+        d = Digest(
+            sha256 = htext,
+            md5 = one['md5'],
+            size = one['size'],
+            mime = rfiles.mime_one(path),
+            magic = rfiles.magic_one(path))
+        ptod[path] = d
+        htod[htext] = d
+        htop[htext] = path
+        fresh_digs.append(d)
+
+    if fresh_digs:
+        session.add_all(fresh_digs)
+        session.flush()             # to resolve fresh ids
+
+    print ("FRESH PATHS:",fresh_paths)
+    pis = [(p,ptod[p].id) for p in fresh_paths]
     path_objs = rpaths.make(pis, nproc)
     session.bulk_save_objects(path_objs)
 
+    pis = [(htop[d.sha256], d.id) for d in fresh_digs]
     attr_objs = rattrs.make(pis, nproc)
     session.bulk_save_objects(attr_objs)
+    thumb_objs = rthumbs.make(pis, nproc)
+    session.bulk_save_objects(thumb_objs)
+
     session.commit()
-    for path, dig in zip(new_paths, new_digs):
-        byp[path] = dig
-    return [byp.get(p, None) for p in paths]
+
+    return [ptod[p] for p in paths]
+
 
 def asdict(dig):
     '''
@@ -100,7 +142,6 @@ def asdict(dig):
     ret["sha256"] = dig.sha256
     ret["md5"] = dig.md5
     ret["size"] = dig.size
-    ret["ext"] = dig.ext
     ret["mime"] = dig.mime
     ret["magic"] = dig.magic
     ret["paths"] = [p.path for p in dig.paths]

@@ -8,6 +8,8 @@ from rephile.types import Base
 
 def engine(url):
     'Get db engine'
+    if url is None:
+        raise ValueError("no db url given, set REPHILE_CACHE?")
     if ":" not in url:          # a file
         url = "sqlite:///"+url
     return create_engine(url, echo=False)

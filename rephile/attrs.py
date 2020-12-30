@@ -14,7 +14,7 @@ def make_some(pis):
     mds = exif(paths)
     ret = list()
     for pi, md in zip(pis, mds):
-        path,did = pi
+        path, did = pi
         for key,val in md.items():
             if type(val) == int:
                 atype = AttrType.integer

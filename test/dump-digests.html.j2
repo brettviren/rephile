@@ -1,0 +1,20 @@
+<html>
+  <body>
+    <table>
+    {% for hash, dig in digs.items() %}
+    <tr><td colspan="2"><pre>{{ hash }}</pre></td></tr>
+    <tr>
+      <td>
+        <img src="{{ dig.thumb().htmldata() }}" />
+      </td>
+      <td>
+        <ul>
+        {% for path in dig.paths %}
+        <li>{{path.path}}</li>
+        {% endfor %}
+        </ul>
+      </td>
+    </tr>
+    {% endfor %}
+  </body>
+</html>

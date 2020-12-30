@@ -4,8 +4,6 @@ Main CLI to rephile
 '''
 import json
 import click
-import base64
-import vignette
 
 from rephile import Rephile
 from rephile.jobs import pmapgroup
@@ -46,6 +44,13 @@ def hashsize(ctx, files):
     hs = ctx.obj.hashsize(files)
     for p, (h, s) in zip(files, hs):
         click.echo(f"{s:10} {h} {p}")
+
+
+@cli.command("init")
+@click.pass_context
+def init(ctx):
+    'Initialize a rephile cache database'
+    ctx.obj.init()
 
 @cli.command("digest")
 @click.option("-F", "--force", is_flag=True,
@@ -89,23 +94,24 @@ def lines(ctx, force, format, delimiter, files):
 @click.pass_context
 def render(ctx, force, template, files):
     'Render template against model'
-    # fixme: normalize the data better!
+
+    # model consists of
+    # digs: map from hash to Digest object
+    # paths: map from file system path to hash
+    
+    # fixme: factor this into rephile.main and further.
+
     from rephile.templates import render as doit
     from rephile.digest import asdict
-    digs = ctx.obj.digest(files, force)
-    byhash = dict()
-    bypath = dict()
-    for f,d in zip(files,digs):
-        bh = asdict(d)
-        bh['path'] = f
-        thumbpath = vignette.get_thumbnail(f)
-        thumbdata = base64.b64encode(open(thumbpath,'rb').read()).decode()
-        bh['thumb'] = dict(path=thumbpath, data=thumbdata)
-        byhash[d.sha256] = bh
-        bypath[f] = d
+    digs_inorder = ctx.obj.digest(files, force)
+    digs = dict()
+    paths = dict()
+    for path, dig in zip(files, digs_inorder):
+        digs[dig.sha256] = dig
+        paths[path] = dig.sha256
 
     # Model provides top level keys used by template
-    model = dict(byhash=byhash, bypath=bypath)
+    model = dict(digs=digs, paths=paths)
     text = doit(template, model)
     print (text)
     

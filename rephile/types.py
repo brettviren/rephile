@@ -2,8 +2,8 @@
 '''
 rephile cache types
 '''
-
-from sqlalchemy import Column, Integer, String, Enum, ForeignKey
+from collections import defaultdict
+from sqlalchemy import Column, Integer, String, Enum, ForeignKey, LargeBinary
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 
@@ -30,17 +30,31 @@ class Digest(Base):
 
     size = Column(Integer)
 
-    ext = Column(String)
     mime = Column(String)
     magic = Column(String)
 
     attrs = relationship("Attribute", backref="digest")
     paths = relationship("Path", backref="digest")
+    thumbs = relationship("Thumb", backref="digest")
     
     def __repr__(self):
-        return "<Digest: %s %s .%s [%s]>" % \
-            (self.size, self.text, self.ext, self.mime)
+        return "<Digest: %s [%s] %s>" % \
+            (self.sha256[:8], self.mime, self.size)
 
+    @property
+    def attrmap(self):
+        am = getattr(self, '_attrmap', None)
+        if am: return am
+        am = defaultdict(list)
+        for a in self.attrs:
+            am[a.name].append(a.value)
+        self._attrmap = am
+        return self._attrmap
+
+    def thumb(self, fdsize="normal"):
+        for one in self.thumbs:
+            if fdsize == one.fdsize:
+                return one
 
 class AttrType(enum.Enum):
     string = 0
@@ -63,6 +77,7 @@ class Attribute(Base):
     digest_id = Column(Integer, ForeignKey('digest.id'),
                        nullable=False)
 
+    @property
     def value(self):
         return self.atype.cast(self.text)
 
@@ -90,6 +105,38 @@ class Annex(Base):
 class Path(Base):
     __tablename__ = "path"
     id = Column(Integer, primary_key=True)
-    path = Column(String)
+    path = Column(String, unique=True)
     digest_id = Column(Integer, ForeignKey("digest.id"))
     collection_id = Column(Integer, ForeignKey("collection.id"))
+
+class Thumb(Base):
+    '''
+    Thumbnail image information associated with one digest
+    '''
+    __tablename__ = "thumb"
+    id = Column(Integer, primary_key=True)
+    digest_id = Column(Integer, ForeignKey("digest.id"))
+    width = Column(Integer)
+    height = Column(Integer)
+    image = Column(LargeBinary) # PNG binary
+
+    @property
+    def fdsize(self):
+        'Freedesktop size label'
+        if self.width == 0 or self.height == 0:
+            return "fail"
+        if self.width <= 128 and self.height <= 128:
+            return "normal"
+        if self.width <= 256 and self.height <= 256:
+            return "large"
+        if self.width <= 512 and self.height <= 512:
+            return "x-large"
+        if self.width <= 1024 and self.height <= 1024:
+            return "xx-large"
+        return "xxx-large"      # not a freedesktop standard
+        
+    def encode(self):           # future: add arg to set encoding
+        import base64
+        return base64.b64encode(self.image)
+    def htmldata(self):
+        return "data:image/png;base64," + self.encode().decode()
