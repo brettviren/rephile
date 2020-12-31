@@ -2,17 +2,21 @@
 '''
 rephile cache types
 '''
+import os
 import enum
 
-from collections import defaultdict
 from sqlalchemy import Column, Integer, String, Enum, ForeignKey, \
-    LargeBinary, DateTime
+    LargeBinary, DateTime, UniqueConstraint
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 
 Base = declarative_base()
 
-
+class AttrDict(dict):
+    def __init__(self, *args, **kwargs):
+        super(AttrDict, self).__init__(*args, **kwargs)
+        self.__dict__ = self
+        
 class Digest(Base):
     '''
     A hash based digest of some data
@@ -37,13 +41,22 @@ class Digest(Base):
 
     @property
     def attrmap(self):
+        'Attribute list as dictionary'
         am = getattr(self, '_attrmap', None)
         if am: return am
-        am = defaultdict(list)
+        am = dict()
         for a in self.attrs:
-            am[a.name].append(a.value)
+            am[a.name] = a.value
         self._attrmap = am
         return self._attrmap
+
+    @property
+    def attr(self):
+        'Attribute list as object of attributes'
+        ad = getattr(self, '_attrdict', None)
+        if ad: return ad
+        self._attrdict = AttrDict(self.attrmap)
+        return self._attrdict
 
     def thumb(self, fdsize="normal"):
         for one in self.thumbs:
@@ -70,6 +83,9 @@ class Attribute(Base):
     atype = Column(Enum(AttrType))
     digest_id = Column(Integer, ForeignKey('digest.id'),
                        nullable=False)
+
+    __table_args__ = (UniqueConstraint('digest_id', 'name',
+                                       name='_name_uc'),)
 
     @property
     def value(self):
@@ -100,8 +116,7 @@ class Path(Base):
     __tablename__ = "path"
     # absolute path, but not realpath
     id = Column(String, primary_key=True)
-    real = Column(String, unique=True)
-    ext = Column(String)
+    real = Column(String)
     mode = Column(Integer, default=0)
     uid = Column(Integer, default=-1)
     gid = Column(Integer, default=-1)
@@ -110,6 +125,18 @@ class Path(Base):
     ctime = Column(DateTime, default=0)
     digest_id = Column(Integer, ForeignKey("digest.id"))
     collection_id = Column(Integer, ForeignKey("collection.id"))
+
+    @property
+    def base(self):
+        return os.path.basename(self.id)
+
+    @property
+    def name(self):
+        return os.path.splitext(self.base)[0]
+
+    @property
+    def ext(self):
+        return os.path.splitext(self.id)[1][1:]
 
 class Thumb(Base):
     '''
@@ -140,5 +167,6 @@ class Thumb(Base):
     def encode(self):           # future: add arg to set encoding
         import base64
         return base64.b64encode(self.image)
+
     def htmldata(self):
         return "data:image/png;base64," + self.encode().decode()

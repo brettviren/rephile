@@ -1,10 +1,20 @@
-{% for path, hash in paths.items() %}
-{{ hash }}: {{path}}
-  {% set dig = digs[hash] %}
+Iterate over paths:
+
+{% for path in paths %}
+{{ path.digest_id }}:
+- abspath: {{path.id}}
+- basename: {{path.name}}
+- extension: {{path.ext}}
+- attributes:
+  {% set dig = path.digest %}
   {% for attr in dig.attrs %}
-  {{ attr.name }} = {{ attr.value }}
+    {{ attr.name }} = {{ attr.value }}
   {% endfor %}
+
 {% endfor %}
+
+
+Iterate over the set of digests spanning the paths:
 
 {% for hash, dig in digs.items() %}
 {{ hash }}
@@ -15,4 +25,5 @@
   {% for thumb in dig.thumbs %}
     thumb# {{thumb.id}}: {{thumb.width}} x {{thumb.height}}
   {% endfor %}
+
 {% endfor %}

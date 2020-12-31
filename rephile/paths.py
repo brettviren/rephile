@@ -7,11 +7,10 @@ from rephile.types import Path
 from rephile.jobs import pmapgroup
 from datetime import datetime
 
-def make_one(path, did):
-    s = os.stat(path)
-    p = Path(id=os.path.abspath(path),
-             real = os.path.realpath(path),
-             ext = os.path.splitext(path)[1][1:],
+def make_one(filename, did):
+    s = os.stat(filename)
+    p = Path(id=os.path.abspath(filename),
+             real = os.path.realpath(filename),
              mode = s.st_mode,
              uid = s.st_uid, 
              gid = s.st_gid, 
@@ -23,8 +22,8 @@ def make_one(path, did):
 
 def make_some(pis):
     ret = list()
-    for path, did in pis:
-        p = make_one(path, did)
+    for filename, did in pis:
+        p = make_one(filename, did)
         ret.append(p)
     return ret
 
@@ -32,28 +31,28 @@ def make(pis, nproc=1):
     return pmapgroup(make_some, pis, nproc)
 
     
-def ids(session, paths):
-    got = session.query(Path.path, Path.id).filter(Path.path.in_(paths))
+def ids(session, filenames):
+    got = session.query(Path.id).filter(Path.path.in_(filenames))
     byp = dict()
-    for path, pid in got.all():
-        byp[path] = pid
+    for filename, pid in got.all():
+        byp[filename] = pid
     return byp
 
 
-def fresh(session, path_hashes):
+def fresh(session, fname_hashes):
     # Make new Paths for any we don't have
-    path_hashes = list(path_hashes)
-    paths = [ph[0] for ph in path_hashes]
+    fname_hashes = list(fname_hashes)
+    fnames = [ph[0] for ph in fname_hashes]
 
-    have_paths = session.query(Path).filter(Path.id.in_(paths)).all()
-    have_paths = {p.id:p for p in have_paths}
+    have_fnames = session.query(Path).filter(Path.id.in_(fnames)).all()
+    have_fnames = {p.id:p for p in have_fnames}
 
     ret = list()
     fresh_paths = list()
-    for path, sha in path_hashes:
-        have = have_paths.get(path, None)
+    for fname, sha in fname_hashes:
+        have = have_fnames.get(fname, None)
         if have is None:
-            have = make_one(path, sha)
+            have = make_one(fname, sha)
             fresh_paths.append(have)
             ret.append(have)
             continue
@@ -68,9 +67,15 @@ def fresh(session, path_hashes):
 
     
 def asdict(pobj):
-    import rephile.digest
     ret = dict()
-    for column in pobj.__table__.columns:
-        ret[column.name] = str(getattr(pobj, column.name))
-    ret["digest"] = rephile.digest.asdict(pobj.digest)
+    for one in dir(pobj):
+        if one.startswith("_"):
+            continue
+        ret[one] = getattr(pobj,one)
+
+    # for column in pobj.__table__.columns:
+    #     ret[column.name] = getattr(pobj, column.name)
+    # #ret["digest"] = rephile.digest.asdict(pobj.digest)
+    # ret["digest"] = pobj.digest
+
     return ret

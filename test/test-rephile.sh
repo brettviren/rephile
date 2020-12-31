@@ -37,7 +37,7 @@ setup_file () {
     [[ "${out[2]}" = "images/viren.jpg" ]]
 }
 
-@test "render digests" {
+@test "render to text" {
     run rephile render -t test/dump-digests.txt.j2 \
         images/{moon,viren,viren2}.jpg
     h1="030d30c1934372f6999016af345fa2c82092363a6fd7b791b3c4c45757244760"
@@ -53,7 +53,7 @@ setup_file () {
     [[ "$output" = "2" ]]
 }
 
-@test "render html" {
+@test "render to html" {
     run rephile render -t test/dump-digests.html.j2 \
         images/{moon,viren,viren2}.jpg
     h1="030d30c1934372f6999016af345fa2c82092363a6fd7b791b3c4c45757244760"

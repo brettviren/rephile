@@ -77,13 +77,10 @@ def digest(ctx, force, files):
 @click.pass_context
 def lines(ctx, force, format, delimiter, files):
     'Format information about each file into one line of text.'
-    from rephile.digest import astext
-    digs = ctx.obj.digest(files, force)
-    lines = list()
-    for dig in digs:
-        lines.append(astext(dig, format))
+    from rephile.paths import asdict
+    paths = ctx.obj.paths(files)
+    lines = [format.format(**asdict(p)) for p in paths]
     text = delimiter.join(lines)
-    #click.echo(text)
     print (text.encode("latin1").decode('unicode-escape'))
 
 
@@ -95,23 +92,20 @@ def lines(ctx, force, format, delimiter, files):
 @click.argument("files", nargs=-1)
 @click.pass_context
 def render(ctx, force, template, files):
-    'Render template against model'
+    '''Render template against model
 
-    # model consists of
-    # digs: map from hash to Digest object
-    # paths: map from file system path to hash
-    
-    # fixme: factor this into rephile.main and further.
+    The model given to the template consists of:
+    - paths :: array of Path objects corresponding to files list.
+    - digs :: map from hash to Digest object spanning paths
+    '''
 
     from rephile.templates import render as doit
-    digs_inorder = ctx.obj.digest(files, force)
+    paths = ctx.obj.paths(files, force)
     digs = dict()
-    paths = dict()
-    for path, dig in zip(files, digs_inorder):
+    for path in paths:
+        dig = path.digest
         digs[dig.id] = dig
-        paths[path] = dig.id
 
-    # Model provides top level keys used by template
     model = dict(digs=digs, paths=paths)
     text = doit(template, model)
     print (text)
@@ -131,15 +125,12 @@ def render(ctx, force, template, files):
 @click.pass_context
 def make(ctx, dry_run, force, format, method, files):
     'Make new files from old'
-    from rephile.digest import astext
+    from rephile.paths import asdict
 
-    digs = ctx.obj.digest(files, force)
+    paths = ctx.obj.paths(files)
+    tgts = [format.format_map(**asdict(p)) for p in paths]
 
-    new_paths = list()
-    for dig in digs:
-        new_paths.append(astext(dig, format))
-
-    for src, tgt, dig in zip(files, new_paths, digs):
+    for src, tgt in zip(files, tgts):
         if os.path.abspath(src) == os.path.abspath(tgt):
             print(f"same: {src} <--> {tgt}")
             return
