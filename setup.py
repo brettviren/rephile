@@ -15,6 +15,7 @@ setuptools.setup(
         "sqlalchemy",
         "python-magic",
         "git_annex_adapter",
+        "imgur-uploader",
     ],
     entry_points = dict(
         console_scripts = [

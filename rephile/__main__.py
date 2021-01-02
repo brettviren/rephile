@@ -179,6 +179,31 @@ def asdata(ctx, files):
     print(text)
     
 
+@cli.command("imgur")
+@click.option("-w", "--web", is_flag=True,
+              help="Open resulting imgur links in web browser")
+@click.argument("files", nargs=-1)
+@click.pass_context
+def imgur(ctx, web, files):
+    '''Upload files to imgur.
+
+    See docs for info about imgur api key.  We try to reuse setup for
+    imgur-uploader.  https://pypi.org/project/imgur-uploader/
+    '''
+    from rephile.imgur import upload
+    import webbrowser
+
+    paths = ctx.obj.paths(files)
+    for path in paths:
+        url = upload(path.id)
+        click.echo (url)
+        if web:
+            webbrowser.open(url)
+        
+    
+
+
+
 def main():
     cli(obj=None)
 
