@@ -63,7 +63,7 @@ def digest(ctx, force, files):
     'Import information about files'
     digs = ctx.obj.digest(files, force)
     for dig in digs:
-        click.echo(dig)
+        click.echo(dig.id)
     
 
 @cli.command("lines")
@@ -196,6 +196,8 @@ def imgur(ctx, web, files):
     paths = ctx.obj.paths(files)
     for path in paths:
         url = upload(path.id)
+        if not url:
+            ctx.exit(-1)
         click.echo (url)
         if web:
             webbrowser.open(url)
