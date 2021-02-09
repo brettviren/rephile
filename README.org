@@ -1,4 +1,7 @@
 #+title: 📷 rephile 🌄
+#+EXPORT_FILE_NAME: index.html
+#+setupfile: setup.org
+
 
 *rephile* provides CLI and Python modules to help organize files with an
 emphasis on digital photos and storage in [[https://git-annex.branchable.com/][git-annex]].
