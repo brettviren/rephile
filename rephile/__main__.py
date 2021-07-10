@@ -203,6 +203,26 @@ def imgur(ctx, web, files):
             webbrowser.open(url)
         
     
+@cli.command("0x0")
+@click.option("-w", "--web", is_flag=True,
+              help="Open resulting imgur links in web browser")
+@click.argument("files", nargs=-1)
+@click.pass_context
+def ohecksoh(ctx, web, files):
+    'Upload files to 0x0.st.'
+    from rephile.ohecksoh import upload
+    import webbrowser
+
+    paths = ctx.obj.paths(files)
+    for path in paths:
+        url = upload(path.id)
+        if not url:
+            click.echo(f"failed to upload {path.id}")
+            continue
+        click.echo (url)
+        if web:
+            webbrowser.open(url)
+        
 
 
 

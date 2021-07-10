@@ -16,6 +16,8 @@ setuptools.setup(
         "python-magic",
         "git_annex_adapter",
         "imgur-uploader",
+        "pillow",
+        "requests",
     ],
     entry_points = dict(
         console_scripts = [
