@@ -18,7 +18,9 @@ def init(url):
     '''
     Initialize a rephile cache.
     '''
-    Base.metadata.create_all(engine(url))
+    e = engine(url)
+    Base.metadata.create_all(e)
+    return e
 
 def session(dbfile):
     '''
@@ -26,10 +28,12 @@ def session(dbfile):
     '''
     if not dbfile:
         raise ValueError("no rephile cache, set REPHILE_CACHE?")
-    if not os.path.exists(dbfile):
-        init(dbfile)
-    if os.stat(dbfile).st_size == 0:
+    if os.path.exists(dbfile):
+        e = engine(dbfile)
+    else:
+        e = init(dbfile)
+    if not dbfile == "sqlite://" and os.stat(dbfile).st_size == 0:
         raise ValueError("rephile cache is not initialized")
-    Session = sessionmaker(bind=engine(dbfile))
+    Session = sessionmaker(bind=e)
     return Session()
 

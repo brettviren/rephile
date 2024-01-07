@@ -7,13 +7,14 @@ Methods of these classes do high level operations.  They deal in
 '''
 import os
 from rephile import db as rdb
-import rephile.files
 from rephile.jobs import pmapgroup
+import rephile.files
 import rephile.digest
+import rephile.tags
 
 class Rephile:
 
-    def __init__(self, cache, nproc):
+    def __init__(self, cache, nproc=1):
         self.cache = cache
         self.nproc = nproc
         
@@ -38,12 +39,28 @@ class Rephile:
         return hss
 
     def digest(self, paths, force=False):        
-        'Return Digest object matching paths'
+        '''
+        Return Digest objects matching paths.
+        '''
         return rephile.digest.build(self.session, paths, self.nproc, force)
         
     def paths(self, files, force=False):
+        '''
+        Return Path objects matching files.
+        '''
         files = [os.path.abspath(f) for f in files]
         digs = self.digest(files, force)
         shas = [d.id for d in digs]
         return rephile.paths.fresh(self.session, zip(files, shas))
         
+    def tags(self, *args, assure=False, **kwds):
+        '''Return tag objects matching tag name strings.
+
+        If assure is True or kwds are given all tags will be assured to exist.
+        Otherwise, return tags in args.
+
+        '''
+        if assure or kwds:
+            rephile.tags.add(self.session, *args, **kwds)
+            args = list(set(list(args) + list(kwds.keys())))
+        return rephile.tags.get(self.session, *args)

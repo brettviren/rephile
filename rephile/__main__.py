@@ -6,13 +6,14 @@ import os
 import shutil
 import json
 import click
+import functools
 
 from rephile import Rephile
 from rephile.jobs import pmapgroup
 import rephile.db as rdb
 
-
-@click.group()
+cmddef = dict(context_settings = dict(help_option_names=['-h', '--help']))
+@click.group(**cmddef)
 @click.option("-c", "--cache",
               type=click.Path(dir_okay=False, file_okay=True,
                               resolve_path=True),
@@ -66,6 +67,15 @@ def digest(ctx, force, files):
         click.echo(dig.id)
     
 
+def select_digests(func):
+    '''
+    CLI decorator used to give user ways to  select digests in various ways.
+    '''
+    @functools.wraps(func)
+    def wraper(*args, **kwds):
+        return func(*args, **kwds)
+    return wrapper
+
 @cli.command("lines")
 @click.option("-F", "--force", is_flag=True,
               help="Force an update to the cache")
@@ -79,10 +89,59 @@ def lines(ctx, force, format, delimiter, files):
     'Format information about each file into one line of text.'
     from rephile.paths import asdict
     paths = ctx.obj.paths(files)
+
     lines = [format.format(**asdict(p)) for p in paths]
+    ## delightfully dangerous
+    # lines = [eval(f"f'{format}'", asdict(p)) for p in paths]
+
     text = delimiter.join(lines)
     print (text.encode("latin1").decode('unicode-escape'))
 
+
+@cli.command("tag")
+@click.option("-t", "--tag", multiple=True,
+              help="A tag to add to the UserTags attribute of the files")
+@click.argument("files", nargs=-1)
+@click.pass_context
+def tag(ctx, tag, files):
+    '''
+    Add or get user tags.
+
+    If no tags are given with -t/--tag then tags will be retrieved.
+    '''
+    print("replace with call to rephile.tag functions")
+    return
+
+    ## fixme: move this into tag.py and add interface to main.py
+    from .types import Attribute, AttrType
+    tag = list(tag)
+    digs = ctx.obj.digest(files)
+    fresh = list()
+    for dig in digs:
+        ut = dig.find_attr('UserTags')
+
+        if tag:                 # setting
+
+            if ut is None:      # new
+                attr = Attribute(name='UserTags', text=' '.join(tag),
+                                 atype=AttrType.string, digest_id = dig.id)
+                fresh.append(attr)
+
+            else:               # existing
+                new = list(set(ut.text.split() + tag))
+                new.sort()
+                new = ' '.join(new)
+                ut.text = new
+                fresh.append(ut)
+            continue
+        # getting
+        print(dig.paths[0].id, ut.text)
+    if fresh:
+        ctx.obj.session.add_all(fresh)
+        ctx.obj.session.commit()
+    return
+
+        
 
 @cli.command("render")
 @click.option("-F", "--force", is_flag=True,

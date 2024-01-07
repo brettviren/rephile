@@ -40,7 +40,7 @@ def ids(session, filenames):
 
 
 def fresh(session, fname_hashes):
-    # Make new Paths for any we don't have
+    '''Make new Paths for any we don't have'''
     fname_hashes = list(fname_hashes)
     fnames = [ph[0] for ph in fname_hashes]
 

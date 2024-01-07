@@ -7,8 +7,7 @@ import enum
 
 from sqlalchemy import Column, Integer, String, Enum, ForeignKey, \
     LargeBinary, DateTime, UniqueConstraint
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, declarative_base
 
 Base = declarative_base()
 
@@ -35,9 +34,18 @@ class Digest(Base):
     paths = relationship("Path", backref="digest")
     thumbs = relationship("Thumb", backref="digest")
     
+    def tags(self):
+        return [x.head for x in self.tag_edges]
+
     def __repr__(self):
         return "<Digest: %s [%s] %s>" % \
             (self.id[:8], self.mime, self.size)
+
+    def find_attr(self, name):
+        for a in self.attrs:
+            if name == a.name:
+                return a
+            
 
     @property
     def attrmap(self):
@@ -62,6 +70,90 @@ class Digest(Base):
         for one in self.thumbs:
             if fdsize == one.fdsize:
                 return one
+
+class Tag(Base):
+    '''
+    A node in a tag graph.
+    '''
+    __tablename__ = "tag"
+
+    id = Column(Integer, primary_key=True)
+
+    name = Column(String)        # visible identifier
+    description = Column(String) # human readable definition
+
+    __table_args__ = (UniqueConstraint('name', name='_name_uc'),)
+
+    def parents(self):
+        return [x.head for x in self.parent_edges]
+
+    def tails(self):
+        return [x.tail for x in self.child_edges]
+
+    def digests(self):
+        return [x.tail for x in self.digest_edges]
+
+# Putting a graph in SQL may not be performant.
+# An alernative is storing all ancestor node IDs in an array.
+# https://www.sqlite.org/json1.html
+
+class TagTagEdge(Base):
+    '''
+    A tag->tag edge.
+
+    children = child_edges.tail(s)
+    child -> tail.[child edges].head -> TAG -> tail.[parent eges].head -> parent
+    parent = parent_edges.head(s)
+
+    '''
+    __tablename__ = "tagtagedge"
+
+    id = Column(Integer, primary_key=True)
+
+    head_id = Column(Integer, ForeignKey("tag.id"), nullable=False)
+    tail_id = Column(Integer, ForeignKey("tag.id"), nullable=False)
+
+    tail = relationship(
+        Tag, primaryjoin=tail_id == Tag.id, backref="child_edges"
+    )
+
+    head = relationship(
+        Tag, primaryjoin=head_id == Tag.id, backref="parent_edges"
+    )
+
+    __table_args__ = (UniqueConstraint('tail_id', 'head_id'),)
+
+    def __init__(self, tail, head):
+        self.tail = tail
+        self.head = head
+
+
+class DigestTagEdge(Base):
+    '''
+    A digest->tag edge.
+    '''
+    __tablename__ = "digesttagedge"
+
+    id = Column(Integer, primary_key=True)
+
+    # the "head"
+    tag_id = Column(Integer, ForeignKey("tag.id"), nullable=False)
+    # the "tail"
+    digest_id = Column(Integer, ForeignKey("digest.id"), nullable=False)
+
+    tag = relationship(
+        Tag, primaryjoin=tag_id == Tag.id, backref="digest_edges"
+    )
+    digest = relationship(
+        Digest, primaryjoin=digest_id == Digest.id, backref="tag_edgess"
+    )
+
+    __table_args__ = (UniqueConstraint('digest_id', 'tag_id'),)
+
+    def __init__(self, digest, tag):
+        self.digest = digest
+        self.tag = tag
+
 
 class AttrType(enum.Enum):
     string = 0
