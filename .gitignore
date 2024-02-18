@@ -6,3 +6,7 @@ cut.*
 *.db
 __pycache__
 cut
+/cache
+/foo/
+junk.*
+junk*

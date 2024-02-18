@@ -9,10 +9,11 @@ import click
 import functools
 
 from rephile import Rephile
-from rephile.jobs import pmapgroup
-import rephile.db as rdb
 
-cmddef = dict(context_settings = dict(help_option_names=['-h', '--help']))
+
+cmddef = dict(context_settings=dict(help_option_names=['-h', '--help']))
+
+
 @click.group(**cmddef)
 @click.option("-c", "--cache",
               type=click.Path(dir_okay=False, file_okay=True,
@@ -20,7 +21,7 @@ cmddef = dict(context_settings = dict(help_option_names=['-h', '--help']))
               envvar='REPHILE_CACHE',
               default=None,
               help="The rephile cache")
-@click.option("-j","--jobs",default=1,
+@click.option("-j", "--jobs", default=1,
               help="Number of concurrent jobs may be run")
 @click.pass_context
 def cli(ctx, cache, jobs):
@@ -55,6 +56,7 @@ def init(ctx):
     'Initialize a rephile cache database'
     ctx.obj.init()
 
+
 @cli.command("digest")
 @click.option("-F", "--force", is_flag=True,
               help="Force an update to the cache")
@@ -65,16 +67,17 @@ def digest(ctx, force, files):
     digs = ctx.obj.digest(files, force)
     for dig in digs:
         click.echo(dig.id)
-    
+
 
 def select_digests(func):
     '''
     CLI decorator used to give user ways to  select digests in various ways.
     '''
     @functools.wraps(func)
-    def wraper(*args, **kwds):
+    def wrapper(*args, **kwds):
         return func(*args, **kwds)
     return wrapper
+
 
 @cli.command("lines")
 @click.option("-F", "--force", is_flag=True,
@@ -91,11 +94,11 @@ def lines(ctx, force, format, delimiter, files):
     paths = ctx.obj.paths(files)
 
     lines = [format.format(**asdict(p)) for p in paths]
-    ## delightfully dangerous
+    # delightfully dangerous
     # lines = [eval(f"f'{format}'", asdict(p)) for p in paths]
 
     text = delimiter.join(lines)
-    print (text.encode("latin1").decode('unicode-escape'))
+    print(text.encode("latin1").decode('unicode-escape'))
 
 
 @cli.command("tag")
@@ -112,7 +115,7 @@ def tag(ctx, tag, files):
     print("replace with call to rephile.tag functions")
     return
 
-    ## fixme: move this into tag.py and add interface to main.py
+    # fixme: move this into tag.py and add interface to main.py
     from .types import Attribute, AttrType
     tag = list(tag)
     digs = ctx.obj.digest(files)
@@ -124,7 +127,7 @@ def tag(ctx, tag, files):
 
             if ut is None:      # new
                 attr = Attribute(name='UserTags', text=' '.join(tag),
-                                 atype=AttrType.string, digest_id = dig.id)
+                                 atype=AttrType.string, digest_id=dig.id)
                 fresh.append(attr)
 
             else:               # existing
@@ -141,7 +144,6 @@ def tag(ctx, tag, files):
         ctx.obj.session.commit()
     return
 
-        
 
 @cli.command("render")
 @click.option("-F", "--force", is_flag=True,
@@ -167,8 +169,8 @@ def render(ctx, force, template, files):
 
     model = dict(digs=digs, paths=paths)
     text = doit(template, model)
-    print (text)
-    
+    print(text)
+
 
 @cli.command("make")
 @click.option("-n", "--dry-run", is_flag=True,
@@ -178,7 +180,7 @@ def render(ctx, force, template, files):
 @click.option("-f", "--format", default="{SourceFile}",
               help="F-string to apply to file metadata")
 @click.option("-m", "--method", default="copy",
-              type=click.Choice(["copy","move","hard","soft",]),
+              type=click.Choice(["copy", "move", "hard", "soft",]),
               help="Method for making a file from input files")
 @click.argument("files", nargs=-1)
 @click.pass_context
@@ -219,12 +221,10 @@ def make(ctx, dry_run, force, format, method, files):
             else:
                 os.symlink(src, tgt)
             continue
-    
+
         if method == "hard":
             os.link(src, tgt)
             continue
-
-
 
 
 @cli.command("asdata")
@@ -236,7 +236,7 @@ def asdata(ctx, files):
     paths = ctx.obj.paths(files)
     text = json.dumps([asdict(p) for p in paths], indent=4)
     print(text)
-    
+
 
 @cli.command("imgur")
 @click.option("-w", "--web", is_flag=True,
@@ -257,11 +257,11 @@ def imgur(ctx, web, files):
         url = upload(path.id)
         if not url:
             ctx.exit(-1)
-        click.echo (url)
+        click.echo(url)
         if web:
             webbrowser.open(url)
-        
-    
+
+
 @cli.command("0x0")
 @click.option("-w", "--web", is_flag=True,
               help="Open resulting imgur links in web browser")
@@ -278,15 +278,14 @@ def ohecksoh(ctx, web, files):
         if not url:
             click.echo(f"failed to upload {path.id}")
             continue
-        click.echo (url)
+        click.echo(url)
         if web:
             webbrowser.open(url)
-        
-
 
 
 def main():
     cli(obj=None)
+
 
 if '__main__' == __name__:
     main()
