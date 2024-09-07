@@ -10,3 +10,7 @@ cut
 /foo/
 junk.*
 junk*
+build
+dist
+__main__.spec
+rephile.spec

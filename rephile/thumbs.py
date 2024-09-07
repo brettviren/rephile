@@ -3,7 +3,7 @@
 Medium-level operations on thumbs
 '''
 
-from rephile.types import Thumb
+from rephile.dbtypes import Thumb
 from rephile.jobs import pmapgroup
 from rephile.files import thumb as gen_thumbs
 

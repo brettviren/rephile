@@ -2,7 +2,7 @@
 '''
 Medium level operations on Attribute
 '''
-from rephile.types import Attribute, AttrType
+from rephile.dbtypes import Attribute, AttrType
 from rephile.jobs import pmapgroup
 from rephile.files import exif
 

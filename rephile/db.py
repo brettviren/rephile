@@ -4,7 +4,7 @@
 import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from rephile.types import Base
+from rephile.dbtypes import Base
 
 def engine(url):
     'Get db engine'

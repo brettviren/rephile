@@ -3,7 +3,7 @@
 Medium level operations on Path
 '''
 import os
-from rephile.types import Path
+from rephile.dbtypes import Path
 from rephile.jobs import pmapgroup
 from datetime import datetime
 

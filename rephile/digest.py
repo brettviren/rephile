@@ -3,7 +3,7 @@
 Medium level operations on Digest.
 '''
 import os
-from rephile.types import *
+from rephile.dbtypes import *
 from rephile.jobs import pmapgroup
 import rephile.files as rfiles
 

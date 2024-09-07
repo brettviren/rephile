@@ -11,7 +11,7 @@ from itertools import product
 # fixme: this is for upsert.  One day, maybe something besides sqlite is used.
 from sqlalchemy.dialects.sqlite import insert as upsert
 
-from rephile.types import Tag, Digest, TagTagEdge, DigestTagEdge
+from rephile.dbtypes import Tag, Digest, TagTagEdge, DigestTagEdge
 from rephile.util import is_sequence
 
 def get(session, *names):

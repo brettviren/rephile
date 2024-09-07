@@ -116,7 +116,7 @@ def tag(ctx, tag, files):
     return
 
     # fixme: move this into tag.py and add interface to main.py
-    from .types import Attribute, AttrType
+    from .dbtypes import Attribute, AttrType
     tag = list(tag)
     digs = ctx.obj.digest(files)
     fresh = list()
