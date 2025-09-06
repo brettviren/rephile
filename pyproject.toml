@@ -1,0 +1,26 @@
+[project]
+name = "rephile"
+version = "0.2.0"
+description = "CLI and Python modules to organize files, particularly photos using git-annex for storage"
+readme = {file = "README.org", content-type = "text/org"}
+authors = [
+    { name = "Brett Viren", email = "brett.viren@gmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "click>=8.2.1",
+    "git-annex-adapter>=0.2.2",
+    "imgur-uploader>=0.3.0",
+    "jinja2>=3.1.6",
+    "pillow>=11.3.0",
+    "python-magic>=0.4.27",
+    "requests>=2.32.5",
+    "sqlalchemy>=2.0.43",
+]
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project.scripts]
+rephile = "rephile.__main__:main"
