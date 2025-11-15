@@ -9,6 +9,32 @@ import hashlib
 from PIL import Image
 from subprocess import run
 import json
+import imagehash
+
+phashers = dict(
+    ave = imagehash.average_hash,
+    per = imagehash.phash,  # phash_simple
+    dif = imagehash.dhash,  # dhash_vertical
+    wav = imagehash.whash,
+    col = imagehash.colorhash,
+    cro = imagehash.crop_resistant_hash)
+
+def phash(filename, kind):
+    '''
+    Return phash of kind on files
+    '''
+    hashnick = kind.lower()[:3]
+    phasher = phashers[hashnick]
+    img = Image.open(filename)
+    return phasher(img)
+
+def phash_all(filename):
+    img = Image.open(filename)
+    phashes = dict()
+    for name, meth in phashers.items():
+        phashes[name] = phashers[name](img)
+    return phashes
+
 
 def exif(files):
     '''

@@ -39,6 +39,22 @@ def exif(ctx, files):
     dat = ctx.obj.exif(files)
     click.echo(json.dumps(dat, indent=4))
 
+@cli.command("phash")
+@click.option("-k","--kind",default="perceptual",
+              type=click.Choice(["all", "average", "perceptual",
+                                 "difference", "wavelet",
+                                 "color", "crop-resistant"]),
+              help="The kind of phash")
+@click.argument("files", nargs=-1)
+@click.pass_context
+def cmd_phash(ctx, kind, files):
+    '''
+    Calculate and display a pHash
+    '''
+    for fname, kind, phash in ctx.obj.phash(files, kind):
+        print(fname, kind, str(phash))
+
+
 
 @cli.command("hashsize")
 @click.argument("files", nargs=-1)
@@ -82,7 +98,7 @@ def select_digests(func):
 @cli.command("lines")
 @click.option("-F", "--force", is_flag=True,
               help="Force an update to the cache")
-@click.option("-f", "--format", default="{SourceFile}",
+@click.option("-f", "--format", default="{id}",
               help="F-string to apply to file metadata")
 @click.option("-d", "--delimiter", default="\n",
               help="Delimiter of lines of text")
@@ -93,7 +109,16 @@ def lines(ctx, force, format, delimiter, files):
     from rephile.paths import asdict
     paths = ctx.obj.paths(files)
 
-    lines = [format.format(**asdict(p)) for p in paths]
+    lines = list()
+    for p in paths:
+        d = asdict(p)
+        try:
+            f = format.format(**d)
+        except KeyError as err:
+            print(f'{p}: {d}')
+            raise
+        lines.append(f)
+    # [format.format(**asdict(p)) for p in paths]
     # delightfully dangerous
     # lines = [eval(f"f'{format}'", asdict(p)) for p in paths]
 

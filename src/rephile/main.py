@@ -7,7 +7,7 @@ Methods of these classes do high level operations.  They deal in
 '''
 import os
 from rephile import db as rdb
-from rephile.jobs import pmapgroup
+from rephile.jobs import pmap, pmapgroup
 import rephile.files
 import rephile.digest
 import rephile.tags
@@ -33,6 +33,21 @@ class Rephile:
         'Return EXIF info from files as dict'
         return pmapgroup(rephile.files.exif, files, self.nproc)
         
+    def phash(self, files, kind="perceptual"):
+        '''
+        Return pHash info from files as dict.
+        '''
+        # I can't get this to work with multiprocessing....
+        #return pmap(rephile.files.phash_kind(kind), files, self.nproc)
+        ret = list()
+        for filename in files:
+            if kind == "all":
+                for name, phash in rephile.files.phash_all(filename).items():
+                    ret.append((filename, name, phash))
+                continue
+            ret.append((filename, kind.lower()[:3], rephile.files.phash(filename, kind)))
+        return ret
+
     def hashsize(self, files):
         'Return (hash,size) tuples for files'
         hss = pmapgroup(rephile.files.hashsize, files, self.nproc)
